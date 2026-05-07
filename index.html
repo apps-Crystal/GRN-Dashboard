@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRN Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">GRN</div>
+      <div class="brand-text">
+        <h1>Goods Receipt Note Dashboard</h1>
+        <p>Procurement &amp; Inventory Console</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="connStatus" class="conn-pill conn-idle">Idle</span>
+      <button id="refreshBtn" class="btn btn-primary" type="button">
+        <span class="btn-icon">&#x21bb;</span> Refresh
+      </button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Filter / Search panel -->
+    <section class="panel filter-panel">
+      <div class="panel-header">
+        <h2>Filters</h2>
+        <span class="muted" id="filterHint">Search by Site to load POs &amp; GRNs</span>
+      </div>
+
+      <div class="filter-grid">
+        <div class="form-field">
+          <label for="siteInput">Site</label>
+          <input id="siteInput" list="siteList" type="text" placeholder="Type or pick a site..." autocomplete="off" />
+          <datalist id="siteList"></datalist>
+        </div>
+
+        <div class="form-field">
+          <label for="fromDate">From</label>
+          <input id="fromDate" type="date" />
+        </div>
+
+        <div class="form-field">
+          <label for="toDate">To</label>
+          <input id="toDate" type="date" />
+        </div>
+
+        <div class="form-field">
+          <label for="sortBy">Sort POs by</label>
+          <select id="sortBy">
+            <option value="PO_Date_desc">PO Date (newest)</option>
+            <option value="PO_Date_asc">PO Date (oldest)</option>
+            <option value="PO_ID_asc">PO ID (A-Z)</option>
+            <option value="PO_ID_desc">PO ID (Z-A)</option>
+            <option value="Total_Incl_GST_desc">Total (high-low)</option>
+            <option value="Total_Incl_GST_asc">Total (low-high)</option>
+          </select>
+        </div>
+
+        <div class="form-field action-field">
+          <button id="searchBtn" class="btn btn-primary btn-block" type="button">Search</button>
+          <button id="clearBtn" class="btn btn-ghost btn-block" type="button">Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI strip -->
+    <section class="kpi-row" id="kpiRow" hidden>
+      <button type="button" class="kpi-card" data-kpi="site">
+        <div class="kpi-label">Site</div>
+        <div class="kpi-value" id="kpiSite">-</div>
+        <div class="kpi-hint">Click for site overview</div>
+      </button>
+      <button type="button" class="kpi-card" data-kpi="po">
+        <div class="kpi-label">Purchase Orders</div>
+        <div class="kpi-value" id="kpiPo">0</div>
+        <div class="kpi-hint">View PO list</div>
+      </button>
+      <button type="button" class="kpi-card" data-kpi="grn">
+        <div class="kpi-label">Total GRNs</div>
+        <div class="kpi-value" id="kpiGrn">0</div>
+        <div class="kpi-hint">View all GRNs</div>
+      </button>
+      <button type="button" class="kpi-card kpi-warn" data-kpi="nonpo">
+        <div class="kpi-label">Non-PO GRNs</div>
+        <div class="kpi-value" id="kpiNonPo">0</div>
+        <div class="kpi-hint">View non-PO GRNs</div>
+      </button>
+    </section>
+
+    <!-- Site overview (shown on KPI click) -->
+    <section class="panel" id="siteOverviewPanel" hidden>
+      <div class="panel-header">
+        <h2>Site Overview <span class="muted" id="siteOverviewName"></span></h2>
+        <button class="btn btn-ghost" type="button" data-close="siteOverviewPanel">Close</button>
+      </div>
+      <div class="detail-grid" id="siteOverviewGrid"></div>
+    </section>
+
+    <!-- All GRNs (shown on Total GRNs KPI click) -->
+    <section class="panel results-panel" id="allGrnPanel" hidden>
+      <div class="panel-header">
+        <h2>All GRNs <span class="muted" id="allGrnBadge"></span></h2>
+        <div class="panel-tools">
+          <input id="allGrnFilter" type="search" placeholder="Filter GRN, PO, vendor, status..." />
+          <button class="btn btn-ghost" type="button" data-close="allGrnPanel">Close</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>GRN ID</th>
+              <th>PO ID</th>
+              <th>Vendor</th>
+              <th>Invoice #</th>
+              <th class="num">Invoice Value</th>
+              <th>Invoice Date</th>
+              <th>Status</th>
+              <th>PO Type</th>
+            </tr>
+          </thead>
+          <tbody id="allGrnTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Status / loaders -->
+    <div id="statusBar" class="status-bar" hidden></div>
+
+    <!-- Results: PO list -->
+    <section class="panel results-panel" id="resultsPanel" hidden>
+      <div class="panel-header">
+        <h2>Purchase Orders <span class="muted" id="poCountBadge"></span></h2>
+        <div class="panel-tools">
+          <input id="poFilter" type="search" placeholder="Filter PO ID, vendor, status..." />
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="poTable">
+          <thead>
+            <tr>
+              <th data-sort="PO_ID">PO ID</th>
+              <th data-sort="PO_Date">PO Date</th>
+              <th data-sort="Vendor_ID">Vendor</th>
+              <th data-sort="PO_No_Tally">Tally PO No.</th>
+              <th data-sort="Total_Incl_GST" class="num">Total (incl. GST)</th>
+              <th data-sort="Status_Label">Status</th>
+              <th>GRNs</th>
+            </tr>
+          </thead>
+          <tbody id="poTbody"></tbody>
+        </table>
+        <div id="poEmpty" class="empty-state" hidden>No POs match the current filters.</div>
+      </div>
+    </section>
+
+    <!-- Non-PO GRN section -->
+    <section class="panel results-panel" id="nonPoPanel" hidden>
+      <div class="panel-header">
+        <h2>Non-PO GRNs <span class="muted" id="nonPoBadge"></span></h2>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>GRN ID</th>
+              <th>Vendor</th>
+              <th>Invoice #</th>
+              <th class="num">Invoice Value</th>
+              <th>Invoice Date</th>
+              <th>Status</th>
+              <th>Created By</th>
+            </tr>
+          </thead>
+          <tbody id="nonPoTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- GRN detail card -->
+    <section class="panel detail-panel" id="grnDetailPanel" hidden>
+      <div class="panel-header">
+        <h2>GRN Detail <span class="muted" id="grnDetailId"></span></h2>
+        <button id="closeGrnDetailBtn" class="btn btn-ghost" type="button">Close</button>
+      </div>
+      <div class="detail-grid" id="grnDetailGrid"></div>
+      <h3 class="section-title">Items (Ordered vs Received)</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Item</th>
+              <th class="num">Ordered Qty</th>
+              <th class="num">Received Qty</th>
+              <th>UOM</th>
+              <th class="num">Difference</th>
+              <th class="num">Defective</th>
+              <th class="num">Total (incl. GST)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="grnDetailItemsTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PO detail card -->
+    <section class="panel detail-panel" id="detailPanel" hidden>
+      <div class="panel-header">
+        <h2>PO Detail <span class="muted" id="detailPoId"></span></h2>
+        <button id="closeDetailBtn" class="btn btn-ghost" type="button">Close</button>
+      </div>
+      <div class="detail-grid" id="detailGrid"></div>
+      <h3 class="section-title">Items &amp; Receipts</h3>
+      <div class="table-wrap">
+        <table class="data-table" id="detailItemsTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Item</th>
+              <th>Vendor</th>
+              <th>GRN(s)</th>
+              <th class="num">Ordered Qty</th>
+              <th class="num">Received Qty</th>
+              <th>UOM</th>
+              <th class="num">Difference</th>
+              <th class="num">Total (incl. GST)</th>
+            </tr>
+          </thead>
+          <tbody id="detailItemsTbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>GRN Dashboard &middot; <span id="lastSync">Not synced yet</span></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
