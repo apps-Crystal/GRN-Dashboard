@@ -1,12 +1,3 @@
-
-
---
-/* ---------------------------------------------------------------------------
- * GRN Dashboard - Frontend
- *
- * 1. Deploy Code.gs as a Web App (see header of Code.gs).
- * 2. Paste the deployment URL (.../exec) below.
- * --------------------------------------------------------------------------- */
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzARNcqI9kDplQYwbib3XFqTgk5XsJpqyRFn70FXgXNqUXdn7VY6Nph5C-fgYA6nZaCjA/exec';
 
 /* ---------- State ---------- */
